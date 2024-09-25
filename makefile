@@ -40,3 +40,13 @@ _virtualenv:
 	_virtualenv/bin/pip install --upgrade setuptools
 	_virtualenv/bin/pip install --upgrade wheel
 	_virtualenv/bin/pip install --upgrade build twine
+
+# pdbpp and hunter are installed for debugging
+.PHONY: uv-install uv-uninstall uv-re
+uv-install:
+	uv tool install --editable . --with pip --with pdbpp --with hunter
+
+uv-uninstall:
+	@uv tool uninstall vendorize
+
+uv-re: uv-uninstall uv-install

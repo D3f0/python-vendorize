@@ -35,26 +35,59 @@ def _read_directory_config(path):
 def vendorize_requirements(config, directory_path):
     target_directory = os.path.join(directory_path, config["target"])
     ensure_file_exists(os.path.join(target_directory, "__init__.py"))
+    extra_pip_arguments = config.get("extra_pip_arguments", [])
+    if not isinstance(extra_pip_arguments, list):
+        raise RuntimeError("The extra_pip_arguments must be a list")
     _download_requirements(
         cwd=directory_path or None,
         requirements=config["packages"],
         target_directory=target_directory,
+        extra_pip_arguments=config.get("extra_pip_arguments", []),
     )
     top_level_names = _read_top_level_names(target_directory)
     _rewrite_imports(target_directory, top_level_names)
 
 
 def vendorize_requirement(cwd, requirement, target_directory):
-    _download_requirements(cwd=cwd, requirements=[requirement], target_directory=target_directory)
+    _download_requirements(
+        cwd=cwd, requirements=[requirement], target_directory=target_directory
+    )
     top_level_names = _read_top_level_names(target_directory)
     _rewrite_imports(target_directory, top_level_names)
 
 
-def _download_requirements(cwd, requirements, target_directory):
+def replace_env_in_list(string_list):
+    def replace(dollar_sign_prefix_name):
+        if not dollar_sign_prefix_name.startswith("$"):
+            return dollar_sign_prefix_name
+        var_name = dollar_sign_prefix_name[1:]
+        var_value = os.getenv(var_name, None)
+        if var_value is not None:
+            return var_value
+        return dollar_sign_prefix_name
+
+    return [replace(element) for element in string_list]
+
+
+def _download_requirements(cwd, requirements, target_directory, extra_pip_arguments):
     mkdir_p(target_directory)
+    call_arguments = (
+        [
+            sys.executable,
+            "-m",
+            "pip",
+            "install",
+        ]
+        + replace_env_in_list(extra_pip_arguments)
+        + ["--no-dependencies", "--target", target_directory]
+        + requirements
+    )
+
     subprocess.check_call(
-        [sys.executable, "-m", "pip", "install", "--no-dependencies", "--target", target_directory] + requirements,
-        cwd=cwd)
+        call_arguments,
+        cwd=cwd,
+    )
+
 
 def _read_top_level_names(target_directory):
     top_level_names = set()
@@ -86,7 +119,7 @@ def _read_top_level_names_from_dist_info(dist_info_path):
                 if record_path.endswith(py_extension):
                     top_part = pathlib.Path(record_path).parts[0]
                     if top_part.endswith(py_extension):
-                        yield top_part[:-len(py_extension)]
+                        yield top_part[: -len(py_extension)]
                     else:
                         yield top_part
 
@@ -108,6 +141,7 @@ def _rewrite_imports(target_directory, top_level_names):
         if os.path.exists(package_path):
             _rewrite_imports_in_package(package_path, top_level_names, depth=1)
 
+
 def _rewrite_imports_in_package(package_path, top_level_names, depth):
     for name in os.listdir(package_path):
         child_path = os.path.join(package_path, name)
@@ -122,12 +156,12 @@ def _rewrite_imports_in_module(module_path, top_level_names, depth):
     with io.open(module_path, "rb") as source_file:
         encoding = python_source.find_encoding(source_file)
 
-    with io.open(module_path, "r", encoding=encoding, newline='') as source_file:
+    with io.open(module_path, "r", encoding=encoding, newline="") as source_file:
         source = source_file.read()
 
     rewritten_source = rewrite_imports_in_module(source, top_level_names, depth)
 
-    with io.open(module_path, "w", encoding=encoding, newline='') as source_file:
+    with io.open(module_path, "w", encoding=encoding, newline="") as source_file:
         source_file.write(rewritten_source)
 
     pyc_path = os.path.splitext(module_path)[0] + ".pyc"

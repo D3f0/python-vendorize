@@ -32,6 +32,8 @@ The directory structure would be something like:
     packages = [
         "six",
     ]
+    # Optional arguments for pip (e.g. --extra-index-url )
+    pip_extra_arguments = []
 
 I can then run ``python-vendorize`` in the same directory as ``vendorize.toml``.
 The directory structure would then be something like:
@@ -72,3 +74,12 @@ Installation
 ::
 
     pip install vendorize
+
+
+
+Usage without installation with `uv`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+::
+
+    uv tool install https://github.com/D3f0/python-vendorize
