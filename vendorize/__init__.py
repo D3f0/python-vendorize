@@ -30,6 +30,8 @@ def _read_directory_config(path):
             return pyproject["tool"]["vendorize"]
     except FileNotFoundError:
         raise RuntimeError("Could not find vendorize config")
+    except KeyError:
+        raise RuntimeError("The section tool.vendorize is not present in pyproject.toml")
 
 
 def vendorize_requirements(config, directory_path):

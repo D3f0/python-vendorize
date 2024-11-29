@@ -33,7 +33,9 @@ The directory structure would be something like:
         "six",
     ]
     # Optional arguments for pip (e.g. --extra-index-url )
-    pip_extra_arguments = []
+    pip_extra_arguments = [
+        # '--extra-index-url https://$USER:$PASSWORD@interal.repository.com/api/pypi/simple'
+    ]
 
 I can then run ``python-vendorize`` in the same directory as ``vendorize.toml``.
 The directory structure would then be something like:
